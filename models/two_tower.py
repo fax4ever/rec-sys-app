@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 from models.item_tower import ItemTower
 from models.user_tower import UserTower
+from typing import Dict
 
 class TwoTowerModel(nn.Module):
     def __init__(self, item_tower: ItemTower, user_tower: UserTower):
@@ -10,9 +11,8 @@ class TwoTowerModel(nn.Module):
         self.item_tower = item_tower
         self.user_tower = user_tower
         
+    def forward(self, items_dict: Dict[str, Tensor], users_dict: Dict[str, Tensor]):
+        items_embed = self.item_tower(**items_dict) # shape -> bs, dim
+        users_embed = self.user_tower(**users_dict) # shape -> bs, dim
         
-        
-    def forward(self, proccesed_items_dict: Tensor, proccesed_users_dict: Tensor, proccesed_real_intercations: Tensor):
-        # TODO implement me if needed
-        pass
-
+        return torch.norm(items_embed - users_embed, dim=-1) # shape -> bs

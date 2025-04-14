@@ -31,6 +31,16 @@ class UserTower(nn.Module):
         self.signup_date_encoder = nn.Linear(1, signup_date_dim)
         self.signup_date_norm = nn.RMSNorm(signup_date_dim)
         
+        self.fn1 = nn.Linear(d_model, d_model * 2)
+        self.fn2 = nn.Linear(d_model * 2, d_model)
+        self.fn3 = nn.Linear(d_model, d_model * 2)
+        self.fn4 = nn.Linear(d_model * 2, d_model)
+        
+        self.norm = nn.RMSNorm(d_model)
+        self.norm1 = nn.RMSNorm(d_model)
+        self.norm2 = nn.RMSNorm(d_model)
+        
+        self.relu = nn.ReLU()
         
     def forward(self, age: Tensor, gender: Tensor, signup_date: Tensor, preferences: Tensor):
         # project numerical features
@@ -41,4 +51,12 @@ class UserTower(nn.Module):
         gender = self.gender_embed(gender)
         preferences = self.preferences_embed(preferences)
         
-        return torch.cat((age, gender, signup_date, preferences), dim=-1)
+        x = torch.cat((age, gender, signup_date, preferences), dim=-1)
+        
+        x = self.norm(x)
+        y = self.relu(self.fn1(self.norm1(x)))
+        x = self.relu(self.fn2(y)) + x
+        # y = self.relu(self.fn1(self.norm2(x)))
+        # x = self.relu(self.fn2(y)) + x
+        return x
+        
