@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import random
 import argparse
+import pathlib
 
 # Set random seed for reproducibility
 np.random.seed(42)
@@ -105,12 +106,12 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
         
         # Additional data based on interaction type
         if interaction_type == 'rate':
-            rating = np.random.randint(1, 6)  # 1-5 rating
+            rating = float(np.random.randint(3, 6))  # 1-5 rating
         else:
             rating = None
             
         if interaction_type == 'purchase':
-            quantity = np.random.randint(1, 4)
+            quantity = float(np.random.randint(1, 4))
         else:
             quantity = None
         
@@ -126,6 +127,93 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
     
     return pd.DataFrame(interactions)
 
+def generate_negative_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, interactions_df: pd.DataFrame, num_negative_interactions: int):
+    """Generate negative interactions,
+    where:
+    * negative interactions are for items where users don't have positive interaction 
+      with the same item category, subcategory, and price combination
+    """
+    negative_interactions = []
+    
+    # Get existing positive interactions
+    positive_interactions = interactions_df[
+        interactions_df['interaction_type'].isin(['cart', 'purchase', 'rate'])
+    ]
+    
+    # Merge items_df with positive interactions to get category/subcategory/price info
+    positive_items = pd.merge(
+        positive_interactions[['user_id', 'item_id']],
+        items_df[['item_id', 'category', 'subcategory', 'price']],
+        on='item_id'
+    )
+    
+    # Create a dictionary of user_id to their positive interaction characteristics
+    user_positive_chars = positive_items.groupby('user_id').agg({
+        'category': set,
+        'subcategory': set,
+        'price': set
+    }).to_dict('index')
+    
+    # for _ in range(num_negative_interactions):
+    i = 0
+    n_samples = max(num_negative_interactions // len(users_df), 1)
+    for user_id in users_df['user_id']:
+        if i >= num_negative_interactions:
+            break
+        curr_n_samples = n_samples if i + n_samples < num_negative_interactions else num_negative_interactions - i
+        # Get user's positive interaction characteristics if they exist
+        user_chars = user_positive_chars.get(user_id, {
+            'category': set(),
+            'subcategory': set(),
+            'price': set()
+        })
+        
+        # Filter items that don't match the user's positive interaction characteristics
+        candidate_items = items_df[~items_df['category'].isin(user_chars['category'])]
+        if len(candidate_items) < curr_n_samples:
+            candidate_items = items_df[
+                ~items_df['subcategory'].isin(user_chars['subcategory'])
+            ]
+            if len(candidate_items) < curr_n_samples:
+                candidate_items = items_df[
+                    ~items_df['price'].isin(user_chars['price'])
+                ]
+        
+        if len(candidate_items) == 0:
+            # If no items match criteria, select randomly from all items
+            candidate_items = items_df
+        
+        # Select a random item from candidates
+        items = candidate_items.sample(curr_n_samples)
+        for _, item in items.iterrows():
+            item_id = item['item_id']
+            
+            # Generate interaction details
+            timestamp = datetime(2024, 1, 1) + timedelta(
+                days=np.random.randint(0, 365),
+                hours=np.random.randint(0, 24),
+                minutes=np.random.randint(0, 60)
+            )
+            
+            # Negative interaction types (only views or low ratings)
+            interaction_type = np.random.choice(['view', 'rate'], p=[0.8, 0.2])
+            
+            # If rate, give a low rating (1-2)
+            rating = float(np.random.randint(1, 3)) if interaction_type == 'rate' else None
+            
+            negative_interactions.append({
+                'interaction_id': len(negative_interactions) + 1,
+                'user_id': user_id,
+                'item_id': item_id,
+                'timestamp': timestamp,
+                'interaction_type': interaction_type,
+                'rating': rating,
+                'quantity': None
+                
+            })
+        i += curr_n_samples
+    return pd.DataFrame(negative_interactions)
+
 if __name__ ==  '__main__':
     parser = argparse.ArgumentParser(description='Generate Recommendation System dataset')
     parser.add_argument('--n_users', help='Number of users', type=int, default=1000)
@@ -137,6 +225,7 @@ if __name__ ==  '__main__':
     users = generate_users(args.n_users)
     items = generate_items(args.n_items)
     interactions = generate_interactions(users, items, args.n_interactions)
+    neg_interactions = generate_negative_interactions(users, items, interactions, args.n_interactions)
 
     # Display sample of each dataset
     print("Users sample:")
@@ -146,11 +235,16 @@ if __name__ ==  '__main__':
     print("\nInteractions sample:")
     print(interactions.head())
 
+    data_path = pathlib.Path('feature_repo/data')
+    data_path.mkdir(parents=True, exist_ok=True)
+    
     # Save to parquet files
     users.to_parquet('feature_repo/data/recommendation_users.parquet', index=False)
     items.to_parquet('feature_repo/data/recommendation_items.parquet', index=False)
     interactions.to_parquet('feature_repo/data/recommendation_interactions.parquet', index=False)
+    neg_interactions.to_parquet('feature_repo/data/recommendation_neg_interactions.parquet', index=False)
     interactions[['item_id', 'user_id']].to_parquet('feature_repo/data/interactions_item_user_ids.parquet', index=False)
+    neg_interactions[['item_id', 'user_id']].to_parquet('feature_repo/data/neg_interactions_item_user_ids.parquet', index=False)
     
     k = 10
     
