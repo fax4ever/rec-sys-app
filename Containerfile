@@ -5,12 +5,12 @@ WORKDIR /app/
 
 # install and activate env
 COPY pyproject.toml pyproject.toml
-RUN pip install uv -y
+RUN pip3 install uv
 RUN uv sync
 ENV VIRTUAL_ENV=.venv
 ENV PATH=".venv/bin:$PATH"
 
-COPY data/ data/
-COPY feature_store.yaml feature_store.yaml
+COPY models/ models/
+COPY feature_repo/ feature_repo/
 # give premisssions and 
 RUN chmod -R 777 . && ls -la
