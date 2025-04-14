@@ -15,6 +15,11 @@ interactions_source = FileSource(
     path=os.path.join(data_path, 'recommendation_interactions.parquet'),
     timestamp_field="timestamp",
 )
+neg_interactions_source = FileSource(
+    file_format=ParquetFormat(),
+    path=os.path.join(data_path, 'recommendation_neg_interactions.parquet'),
+    timestamp_field="timestamp",
+)
 items_source = FileSource(
     file_format=ParquetFormat(),
     path=os.path.join(data_path, 'recommendation_items.parquet'),

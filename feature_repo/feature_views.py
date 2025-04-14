@@ -59,6 +59,20 @@ interaction_feature_view = FeatureView(
     online=False
 )
 
+neg_interaction_feature_view = FeatureView(
+    name="neg_interactions_features",
+    entities=[user_entity, item_entity],
+    ttl=timedelta(days=365 * 5),
+    schema=[
+        Field(name="user_id", dtype=Int64),
+        Field(name="item_id", dtype=Int64),
+        Field(name="interaction_type", dtype=String),
+        Field(name="rating", dtype=Int32),
+    ],
+    source=interactions_source,
+    online=False
+)
+
 item_embedding_view = FeatureView(
     name="item_embedding",
     entities=[item_entity],

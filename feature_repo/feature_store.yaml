@@ -50,3 +50,4 @@ online_store:
   vector_enabled: true
   vector_len: 64
   sslcert_path: tls.crt
+
