@@ -31,6 +31,17 @@ class ItemTower(nn.Module):
         # Create projection and normalization modules for each numeric feature.
         self.encoders = nn.ModuleDict({k: nn.Linear(1, dims[k]) for k in self.numeric_keys})
         self.norms = nn.ModuleDict({k: nn.RMSNorm(dims[k]) for k in self.numeric_keys})
+        
+        self.fn1 = nn.Linear(d_model, d_model * 2)
+        self.fn2 = nn.Linear(d_model * 2, d_model)
+        self.fn3 = nn.Linear(d_model, d_model * 2)
+        self.fn4 = nn.Linear(d_model * 2, d_model)
+        
+        self.norm = nn.RMSNorm(d_model)
+        self.norm1 = nn.RMSNorm(d_model)
+        self.norm2 = nn.RMSNorm(d_model)
+        
+        self.relu = nn.ReLU()
 
     def forward(self,
                 category, subcategory,
@@ -45,4 +56,12 @@ class ItemTower(nn.Module):
         num_inputs = [price, avg_rating, num_ratings, popular, new_arrival, on_sale, arrival_date]
         num_out = [self.norms[k](self.encoders[k](x)) for k, x in zip(self.numeric_keys, num_inputs)]
         # Concatenate all feature representations.
-        return torch.cat(cat_out + num_out, dim=-1)
+        x = torch.cat(cat_out + num_out, dim=-1)
+        
+        x = self.norm(x)
+        y = self.relu(self.fn1(self.norm1(x)))
+        x = self.relu(self.fn2(y)) + x
+        # y = self.relu(self.fn1(self.norm2(x)))
+        # x = self.relu(self.fn2(y)) + x
+        return x
+        
