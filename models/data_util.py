@@ -115,7 +115,8 @@ def _calculate_interaction_loss(inter_df: pd.DataFrame, is_positive: bool, a: fl
             'view': lambda x: x / a if is_positive else x * a, 
             'cart': lambda x: x / (a * 3), 
             'purchase': lambda x: x / (a * 10),
-            'rate': lambda x: x 
+            'rate': lambda x: x,
+            -1.0: lambda x: x # placeholder
         },
         'rating': {
             1.0: lambda x: x * (a * 2),
