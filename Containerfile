@@ -4,13 +4,12 @@ USER root
 WORKDIR /app/
 
 # install and activate env
-COPY pyproject.toml pyproject.toml
+COPY requirements.txt requirements.txt
 RUN pip3 install uv
-RUN uv sync
-ENV VIRTUAL_ENV=.venv
-ENV PATH=".venv/bin:$PATH"
+RUN uv pip install -r requirements.txt
 
 COPY models/ models/
 COPY feature_repo/ feature_repo/
+COPY service-ca.crt service-ca.crt
 # give premisssions and 
 RUN chmod -R 777 . && ls -la
