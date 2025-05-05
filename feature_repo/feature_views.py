@@ -3,10 +3,12 @@ from datetime import timedelta
 from feast import (
     FeatureView,
     Field,
+    StreamFeatureView
 )
 from feast.types import Float32
+from feast.stream_feature_view import stream_feature_view
 
-from data_sources import interactions_source, items_source, users_source, item_embed_push_source, user_embed_push_source, user_items_push_source
+from data_sources import interactions_source, items_source, users_source, item_embed_push_source, user_embed_push_source, user_items_push_source, interaction_stream_source, interaction_stream_source
 from entities import user_entity, item_entity
 from feast.types import Float32, Int32, Int64, String, Bool, Array
 
@@ -41,7 +43,7 @@ item_feature_view = FeatureView(
         Field(name="on_sale", dtype=Bool),
     ],
     source=items_source,
-    online=False
+    online=True
 )
 
 interaction_feature_view = FeatureView(
@@ -58,6 +60,57 @@ interaction_feature_view = FeatureView(
     source=interactions_source,
     online=False
 )
+interaction_stream_feature_view = FeatureView(
+    name="interactions_stream_features",
+    entities=[user_entity, item_entity],
+    ttl=timedelta(days=365 * 5),
+    schema=[
+        Field(name="user_id", dtype=Int64),
+        Field(name="item_id", dtype=Int64),
+        Field(name="interaction_type", dtype=String),
+        Field(name="rating", dtype=Int32),
+        Field(name="quantity", dtype=Int32),
+    ],
+    source=interaction_stream_source,
+    online=False
+)
+
+# @stream_feature_view(
+#     entities=[user_entity, item_entity],
+#     ttl=timedelta(days=365 * 5),
+#     mode="spark",
+#     schema=[
+#         Field(name="user_id", dtype=Int64),
+#         Field(name="item_id", dtype=Int64),
+#         Field(name="interaction_type", dtype=String),
+#         Field(name="rating", dtype=Int32),
+#         Field(name="quantity", dtype=Int32),
+#     ],
+#     timestamp_field="event_timestamp",
+#     online=True,
+#     source=interaction_stream_source,
+#     tags={},
+# )
+# def iteractions_stream(df):
+#     return df
+
+# interaction_stream_feature_view = StreamFeatureView(
+#     name='interaction_stream_features',
+#     source=interaction_stream_source,
+#     entities=[user_entity, item_entity],
+#     ttl=timedelta(days=365 * 5),
+#     # mode="spark",
+#     schema=[
+#         Field(name="user_id", dtype=Int64),
+#         Field(name="item_id", dtype=Int64),
+#         Field(name="interaction_type", dtype=String),
+#         Field(name="rating", dtype=Int32),
+#         Field(name="quantity", dtype=Int32),
+#     ],
+#     timestamp_field="event_timestamp",
+#     online=True,
+#     # tags={},
+# )
 
 neg_interaction_feature_view = FeatureView(
     name="neg_interactions_features",

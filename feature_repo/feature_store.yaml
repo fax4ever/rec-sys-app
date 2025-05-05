@@ -1,24 +1,54 @@
-# project: feast_edb_rec_sys
-# # Local config
+# # project: feast_edb_rec_sys
+# # # Local config
 
-# provider: local
-# registry: data/registry.db
-# entity_key_serialization_version: 2
+# # provider: local
+# # registry: data/registry.db
+# # entity_key_serialization_version: 2
   
+# # # online_store:
+# # #   type: sqlite
+# # #   path: data/online_store.db  
+# # #   vector_enabled: true
+# # #   vector_len: 64
 # # online_store:
-# #   type: sqlite
-# #   path: data/online_store.db  
+# #   type: postgres
+# #   host: localhost
+# #   port: 5432
+# #   database: app
+# #   user: postgres
+# #   password: "123"
 # #   vector_enabled: true
 # #   vector_len: 64
+
+# # Remote config
+# project: feast_edb_rec_sys
+
+# provider: local
+# registry:
+#   registry_type: remote
+#   path: feast-feast-edb-rec-sys-registry.rag-llm.svc.cluster.local
+#   cert: service-ca.crt
+# entity_key_serialization_version: 2
+  
+# # offline_store:
+# #     host: feast-feast-edb-rec-sys-offline.jary-feast-example.svc.cluster.local
+# #     type: remote
+# #     port: 443
+# #     scheme: https
+# #     cert: service-ca.crt
+    
+
 # online_store:
 #   type: postgres
-#   host: localhost
+#   host: cluster-sample-rw.rag-llm.svc.cluster.local
 #   port: 5432
 #   database: app
-#   user: postgres
-#   password: "123"
+#   user: app     
+#   password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
 #   vector_enabled: true
 #   vector_len: 64
+
+
 
 # Remote config
 project: feast_edb_rec_sys
@@ -26,28 +56,29 @@ project: feast_edb_rec_sys
 provider: local
 registry:
   registry_type: remote
-  path: feast-feast-edb-rec-sys-registry.jary-feast-example.svc.cluster.local
+  path: feast-feast-edb-rec-sys-registry.rec-sys.svc.cluster.local
   cert: service-ca.crt
-entity_key_serialization_version: 2
-  
-# offline_store:
-#     path: feast-feast-edb-rec-sys-offline.jary-feast-example.svc.cluster.local
-#     type: remote
-#     cert: service-ca.crt
-# offline_store:
-#     host: feast-feast-edb-rec-sys-offline.jary-feast-example.svc.cluster.local
-#     type: remote
-#     port: 443
-#     scheme: https
-#     cert: service-ca.crt
-    
-online_store:
-  type: remote
-  host: feast-feast-edb-rec-sys-online.jary-feast-example.svc.cluster.local
-  port: 5432 
+entity_key_serialization_version: 3
+
+offline_store:
+  type: postgres
+  host: cluster-sample-rw.rec-sys.svc.cluster.local
+  port: 5432
   database: app
-  user: app
+  user: app     
+  password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
+
+online_store:
+  type: postgres
+  host: cluster-sample-rw.rec-sys.svc.cluster.local
+  port: 5432
+  database: app
+  user: app     
+  # password: password.crt
+  password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
+  # cert: tls.crt
+  # sslmode: verify-ca
+  # sslcert_path: tls.crt
+  # cert: tls.crt
   vector_enabled: true
   vector_len: 64
-  sslcert_path: tls.crt
-
