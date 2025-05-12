@@ -66,7 +66,8 @@ offline_store:
   port: 5432
   database: app
   user: app     
-  password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
+  password: password.crt
+  # password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
 
 online_store:
   type: postgres
@@ -74,8 +75,8 @@ online_store:
   port: 5432
   database: app
   user: app     
-  # password: password.crt
-  password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
+  password: password.crt
+  # password: "GwAh33gW9mWiBsfywo42pTtTPkg0TUODFerhdvP3endXPX8Fda0FlhKCy2xPMkPY"       
   # cert: tls.crt
   # sslmode: verify-ca
   # sslcert_path: tls.crt
