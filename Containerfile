@@ -4,9 +4,9 @@ USER root
 WORKDIR /app/
 
 # install and activate env
-COPY requirements.txt requirements.txt
+COPY pyproject.toml pyproject.toml
 RUN pip3 install uv
-RUN uv pip install -r requirements.txt
+RUN uv pip install -r pyproject.toml
 RUN dnf update -y && \
     dnf install -y wget && \
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\

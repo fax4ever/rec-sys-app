@@ -5,7 +5,7 @@ provider: local
 registry:
   registry_type: remote
   path: feast-feast-edb-rec-sys-registry.rec-sys.svc.cluster.local
-  cert: tls.crt
+  cert: /app/feature_repo/secrets/tls.crt
 
 entity_key_serialization_version: 3   
 
@@ -16,6 +16,6 @@ online_store:
   database: app
   user: app     
   # this place holder replace by the entry_point.sh
-  password: "placeholder"
+  password: placeholder
   vector_enabled: true
   vector_len: 64
