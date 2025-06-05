@@ -3,14 +3,18 @@ import torch
 from typing import Dict, List
 from pandas.api.types import is_datetime64_any_dtype
 from torch.utils.data import Dataset, DataLoader
+from transformers import AutoTokenizer, AutoModel
+from tqdm import tqdm
+import numpy as np
+from datetime import datetime
 
 # Custom Dataset class
 class UserItemMagnitudeDataset(Dataset):
     def __init__(self, items, users, magnitude):
         """
         Args:
-            items (dict): Dictionary with keys mapping to tensors of shape (n_samples, 1)
-            users (dict): Dictionary with keys mapping to tensors of shape (n_samples, 1)
+            items (dict): Dictionary with keys mapping to tensors of shape (n_samples, n_cols, dim)
+            users (dict): Dictionary with keys mapping to tensors of shape (n_samples, n_cols, dim)
             magnitude (tensor): Tensor of shape (n_samples,)
         """
         self.items = items
@@ -20,9 +24,14 @@ class UserItemMagnitudeDataset(Dataset):
         # Verify that all tensors have consistent number of samples
         n_samples = len(magnitude)
         for user_tensor in users.values():
-            assert user_tensor.shape[0] == n_samples, "User tensor size mismatch"
+            assert len(user_tensor) == n_samples, "User tensor size mismatch"
         for item_tensor in items.values():
-            assert item_tensor.shape[0] == n_samples, "Item tensor size mismatch"
+            assert len(item_tensor) == n_samples, "Item tensor size mismatch"
+            
+        self._items_num_numerical = items['numerical_features'].shape[1]
+        self._users_num_numerical = users['numerical_features'].shape[1]
+        self._items_num_categorical = items['categorical_features'].shape[1]
+        self._users_num_categorical = users['categorical_features'].shape[1]
             
     def __len__(self):
         """Returns the total number of samples"""
@@ -41,102 +50,265 @@ class UserItemMagnitudeDataset(Dataset):
         magnitude_sample = self.magnitude[idx]
         
         return item_sample, user_sample, magnitude_sample
+    
+    @property
+    def items_num_numerical(self):
+        """Returns the number of numerical features for items."""
+        return self._items_num_numerical
+    
+    @property
+    def users_num_numerical(self):
+        """Returns the number of numerical features for users."""
+        return self._users_num_numerical
+    
+    @property
+    def items_num_categorical(self):
+        """Returns the number of categorical features for items."""
+        return self._items_num_categorical
+    
+    @property
+    def users_num_categorical(self):
+        """Returns the number of categorical features for users."""
+        return self._users_num_categorical
+
+# Assuming df is your DataFrame with textual columns
+def tokenize_and_embed_dataframe(df, batch_size=16):
+    # Load model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-small-en-v1.5")
+    model = AutoModel.from_pretrained("BAAI/bge-small-en-v1.5")
+    model.eval()
+    
+    # Get device (GPU if available, else CPU)
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')
+    print(f'device: {device}')
+    model.to(device)
+    
+    # Initialize dictionary to store embeddings for each column
+    embeddings_columns = []
+    
+    # Process each column
+    for column in df.columns:
+        print(f"Processing column: {column}")
+        texts = df[column].astype(str).tolist()
+        
+        # Initialize array to store embeddings
+        embeddings = []
+        
+        # Process in batches
+        for i in tqdm(range(0, len(texts), batch_size), desc="Embedding batches"):
+            batch_texts = texts[i:i + batch_size]
+            
+            # Tokenize
+            encoded_input = tokenizer(
+                batch_texts,
+                padding=True,
+                truncation=True,
+                return_tensors='pt',
+                # max_length=512  # Adjust based on model requirements
+            )
+            
+            # Move to device
+            encoded_input = {k: v.to(device) for k, v in encoded_input.items()}
+            
+            # Compute embeddings
+            with torch.no_grad():
+                model_output = model(**encoded_input)
+                # CLS pooling
+                batch_embeddings = model_output[0][:, 0]
+                # Normalize
+                batch_embeddings = torch.nn.functional.normalize(batch_embeddings, p=2, dim=1)
+            
+            # Move to CPU and convert to numpy
+            embeddings.append(batch_embeddings.cpu())
+            # break
+        
+        # Concatenate all batch embeddings
+        column_embeddings = torch.vstack(embeddings) # shape: len(df), dim
+        
+        # Store in dictionary
+        embeddings_columns.append(column_embeddings)
+    
+    return torch.stack(embeddings_columns).permute(1, 0, 2)  # shape: (len(df), n_col, dim)
+
 
 def data_preproccess(df: pd.DataFrame):
-    category_values = {
-        'preferences': ['Electronics', 'Books', 'Clothing', 'Home', 'Sports'],
-        'category': ['Electronics', 'Books', 'Clothing', 'Home', 'Sports'],
-        'subcategory': ['Smartphones', 'Laptops', 'Cameras', 'Audio', 'Accessories', 'Fiction', 'Non-fiction', 'Science', 'History', 'Self-help', 'Shirts', 'Pants', 'Dresses', 'Shoes', 'Accessories', 'Kitchen', 'Furniture', 'Decor', 'Bedding', 'Appliances', 'Fitness', 'Outdoor', 'Team Sports', 'Footwear', 'Equipment'],
-        # 'interaction_type': ['view', 'cart', 'purchase', 'rate'],
-        'gender':['M', 'F', 'Other']
-        
-    }
-    if 'category' in df.columns:
-        df.rename(columns={'event_timestamp': 'arrival_date'}, inplace=True)
-    elif 'gender' in df.columns:
-        df.rename(columns={'event_timestamp': 'signup_date'}, inplace=True)
-    # elif 'interaction_type' in df.columns:
-    #     df.rename(columns={'event_timestamp': 'timestamp'}, inplace=True)
-        
-    features = [feature for feature in df.columns if not feature.endswith('_timestamp') and not feature.endswith('_id')]
-    proccesed_tensor_dict = dict()
-    for feature in features:
-        # feature is category 
-        is_category = feature in category_values.keys()
-        if is_category:
-            categories = category_values.get(feature)
-            # map numbers to each category
-            category_num = {category: i for category, i, in zip(categories, range(len(categories)))}
-            x_feature = df[feature].map(category_num)
-        # datetime case
-        elif is_datetime64_any_dtype(df[feature]):
-            x_feature = df[feature].apply(lambda x: x.toordinal())
-        # numerical case
-        else:
-            x_feature = df[feature]
-            
-        # parse to tensor
-        x_feature = torch.tensor(x_feature.values)
-        if not is_category:
-            x_feature = x_feature.view(-1, 1).to(torch.float32)
-        proccesed_tensor_dict[feature] = x_feature
-    return proccesed_tensor_dict
-
-def preproccess_pipeline(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame, interaction_df_neg: pd.DataFrame):
-    item_df_pos, user_df_pos, inter_df_pos = _reorder(item_df, user_df, interaction_df_pos)
-    item_df_neg, user_df_neg, inter_df_neg = _reorder(item_df, user_df, interaction_df_neg)
-    magnitude_pos = _calculate_interaction_loss(inter_df_pos, is_positive=True)
-    magnitude_neg = _calculate_interaction_loss(inter_df_neg, is_positive=False)
+    # filter unwanted features
+    df = df[[col for col in df.columns if not col.endswith('timestamp') and not col.endswith('_id')]]
     
-    item_df = pd.concat([item_df_pos, item_df_neg], axis=0)
-    user_df = pd.concat([user_df_pos, user_df_neg], axis=0)
-    magnitude = torch.Tensor(pd.concat([magnitude_pos, magnitude_neg], axis=0).values)
+    # Numerical features
+    numerical_df = df.select_dtypes(include='number')
+    datetime_df = df.select_dtypes(include='datetime')
+    for datetime_col in datetime_df.columns:
+        datetime_df[datetime_col] = datetime_df[datetime_col].apply(lambda x: x.toordinal())
+    numerical_df = pd.concat([numerical_df, datetime_df], axis=1)
+    
+    text_columns = list(set(df.columns) - set(numerical_df.columns))
+    
+    # Image features
+    url_columns = [col for col in text_columns if (df[col].astype(str).str.lower().str[:4] == 'http').mean()> 0.5]
+    url_image_df = df[url_columns].astype(str)
+    
+    # Calculate the percentage of unique values for each column
+    unique_percentages = df[[col for col in text_columns if col not in url_columns]].nunique()
+    unique_percentages = (unique_percentages / unique_percentages.max())
+    # Filter columns where unique values are less than 20% of total values
+    categorical_columns = unique_percentages[unique_percentages < 0.2].index.tolist()
+    category_df = df[categorical_columns]
+    
+    # Text features
+    text_columns = [col for col in text_columns if col not in categorical_columns + url_columns]
+    text_df = df[text_columns]
+
+    def df_to_tensor(df: pd.DataFrame):
+        tensor = torch.Tensor(df.values)
+        # if tensor.dim() == 2:
+        #     tensor = tensor.unsqueeze(-1)
+        if tensor.dim() == 1:
+            tensor = tensor.view(-1, 1)
+        if tensor.dim() == 0:
+            raise ValueError('one of the tensors is empty')
+        return tensor
+    
+    def parse_categorical_df(df: pd.DataFrame):
+        df = df.copy()
+        for col in df.columns:
+            df[col] = col + '_' + df[col].astype(str)
+
+        unique_values = np.unique(df.values.flatten())
+        category_to_code = {val: idx for idx, val in enumerate(unique_values)}
+        
+        # Apply label encoding to the entire DataFrame
+        numeric_df = df.apply(lambda x: x.map(category_to_code))
+        return numeric_df
+        
+    procceed_tensor_dict = {
+        'numerical_features': df_to_tensor(numerical_df), # shape: (len(df), n_col)
+        'categorical_features': df_to_tensor(parse_categorical_df(category_df)).to(int), # shape: (len(df), n_col)
+        'text_features': tokenize_and_embed_dataframe(text_df),  # shape: (len(df), n_col, dim)
+        'url_image': url_image_df.values.tolist(),  # shape: (len(df), n_col)
+    }
+    
+    return procceed_tensor_dict
+
+def preproccess_pipeline(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame):
+    # Align the intercations with the users and items
+    item_df, user_df, inter_df_pos = _align_intercation(item_df, user_df, interaction_df_pos)
+    magnitude = torch.Tensor(_calculate_interaction_loss_v2(inter_df_pos).values)
     
     item_dict = data_preproccess(item_df)
     user_dict = data_preproccess(user_df)
     
     return UserItemMagnitudeDataset(item_dict, user_dict, magnitude)
 
-def _reorder(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame):
+def _align_intercation(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame):
     merged_df = (
         interaction_df
         .merge(item_df, on='item_id')
         .merge(user_df, on='user_id')
     )
-    return merged_df[item_df.columns], merged_df[user_df.columns], merged_df[interaction_df.columns]
+    return merged_df.rename(columns={'rating_y': 'rating'})[item_df.columns], merged_df[user_df.columns], merged_df.rename(columns={'rating_x': 'rating'})[interaction_df.columns]
 
-def _calculate_interaction_loss(inter_df: pd.DataFrame, is_positive: bool, a: float=1.1, magnitude_defualt: float=11.265591558187197):
-    # 'interaction_type': ['view', 'cart', 'purchase', 'rate'],
-    # 'rating': 1-5, or non
-    # 'quantity': 1-3 or non
-    # ['view', 'cart', 'purchase', 'rate']
-    panisment = {
-        'interaction_type': { # view and click vs view and not click
-            'view': lambda x: x / a if is_positive else x * a, 
-            'cart': lambda x: x / (a * 3), 
-            'purchase': lambda x: x / (a * 10),
+
+def loss_map(factor, none_value):
+    return {
+        'interaction_type': {
+            'positive_view': lambda x: x / factor,
+            'negative_view': lambda x: x * factor,
+            'cart': lambda x: x / (factor * 3),
+            'purchase': lambda x: x / (factor * 10),
             'rate': lambda x: x,
-            -1.0: lambda x: x # placeholder
+            none_value: lambda x: x
         },
-        'rating': {
-            1.0: lambda x: x * (a * 2),
-            2.0: lambda x: x * (a * 1),
-            3.0: lambda x: x,
-            4.0: lambda x: x / (a * 1),
-            5.0: lambda x: x / (a * 2),
-            -1.0: lambda x: x # placeholder
-        },
-        'quantity': {
-            1.0: lambda x: x,
-            2.0: lambda x: x / (a * 1),
-            3.0: lambda x: x / (a * 2),
-            -1.0: lambda x: x # placeholder
-        }
+        'rating': lambda x, r: x if (r is none_value or r == 3.0) else x * (factor * (3 - r)) if r <= 2.0 else  x / (factor * (r - 2)),
+        'quantity': lambda x, q: x if (q is none_value or q <= 1.0) else x / (factor * (q - 1))
     }
-    inter_df.fillna(-1.0, inplace=True)
-    inter_df['magnitude'] = magnitude_defualt
-    for col in [punishment_col for punishment_col in panisment.keys() if punishment_col in inter_df.columns]:
-        inter_df[col] = inter_df[col].map(panisment[col])
-        inter_df['magnitude'] = inter_df.apply(lambda row: row[col](row['magnitude']), axis=1)
-            
+
+def _calculate_interaction_loss_v2(inter_df: pd.DataFrame, factor: float=1.1, magnitude_default: float=11.265591558187197):
+    none_value = object()
+    punishment = loss_map(factor, none_value)
+    inter_df = inter_df.fillna(none_value)
+    inter_df['magnitude'] = magnitude_default
+    
+    # Apply interaction type transformation
+    inter_df['magnitude'] = inter_df.apply(
+        lambda row: punishment['interaction_type'].get(row['interaction_type'], lambda x: x)(row['magnitude']),
+        axis=1
+    )
+    
+    # Apply rating transformation
+    inter_df['magnitude'] = inter_df.apply(
+        lambda row: punishment['rating'](row['magnitude'], row['rating']),
+        axis=1
+    )
+    
+    # Apply quantity transformation
+    inter_df['magnitude'] = inter_df.apply(
+        lambda row: punishment['quantity'](row['magnitude'], row['quantity']),
+        axis=1
+    )
+    
     return inter_df['magnitude']
+
+def clean_dataset(df: pd.DataFrame):
+    # Parse number features
+    df['discounted_price'] = df['discounted_price'].str.replace("₹",'')
+    df['discounted_price'] = df['discounted_price'].str.replace(",",'')
+    df['discounted_price'] = df['discounted_price'].astype('float64')
+
+    df['actual_price'] = df['actual_price'].str.replace("₹",'')
+    df['actual_price'] = df['actual_price'].str.replace(",",'')
+    df['actual_price'] = df['actual_price'].astype('float64')
+
+    df['discount_percentage'] = df['discount_percentage'].str.replace('%','').astype('float64')
+    df['discount_percentage'] = df['discount_percentage'] / 100
+
+    df['rating'] = df['rating'].str.replace('|', '3.9').astype('float64')
+    df['rating_count'] = df['rating_count'].str.replace(',', '').astype('float64')
+
+    # Fill null values
+    df['rating_count'] = df.rating_count.fillna(value=df['rating_count'].median())
+
+    # Drop duplicated rows
+    df.drop_duplicates(inplace=True)
+
+    # Parse columns which have many values
+    df['user_id'] = df['user_id'].str.split(',')
+    df['user_name'] = df['user_name'].str.split(',')
+    df['review_title'] = df['review_title'].str.split(',')
+    df['review_content'] = df['review_content'].str.split(',')
+    df['review_id'] = df['review_id'].str.split(',')
+
+    # make sure the length is the same
+    emtpy_lst = [''] * 8
+    df['review_title'] = df.apply(lambda row: (row['review_title'] + emtpy_lst)[:len(row['user_id'])], axis=1)
+    df['review_content'] = df.apply(lambda row: (row['review_content'] + emtpy_lst)[:len(row['user_id'])], axis=1)
+    df['review_id'] = df.apply(lambda row: (row['review_id'] + emtpy_lst)[:len(row['user_id'])], axis=1)
+
+    # Ensure the lengths match for each row
+    df = df[df['user_id'].str.len() == df['user_name'].str.len()]
+
+    item_columns = ['product_id', 'product_name', 'category', 'discounted_price',
+        'actual_price', 'discount_percentage', 'rating', 'rating_count',
+        'about_product', 'img_link', 'product_link']
+    user_columns = ['user_id', 'user_name', 'category']
+    interactions_columns = ['review_id', 'user_id', 'product_id', 'rating', 'review_title', 'review_content']
+    
+    # align dataset to last dataset
+    item_df = df[item_columns].rename(columns={'product_id': 'item_id'})
+    item_df['arrival_date'] = datetime(2023, 1, 1)
+
+    df = df.explode(['user_id', 'user_name', 'review_title', 'review_content', 'review_id'])
+
+    user_df = df[user_columns]
+    user_df = user_df.rename(columns={'category': 'preferences'})
+    user_df = user_df.groupby(['user_id', 'user_name'])['preferences'].apply(lambda x: '|'.join(set(x))).reset_index()
+    user_df['signup_date'] = datetime(2023, 1, 1)
+
+    interaction_df = df[interactions_columns].rename(columns={'product_id': 'item_id', 'review_id': 'interaction_id'})
+
+    interaction_df['interaction_type'] = 'review'
+    interaction_df['timestamp'] = datetime(2025, 1, 1)
+    interaction_df['quantity'] = None
+    
+    return item_df, user_df, interaction_df

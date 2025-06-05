@@ -1,16 +1,25 @@
 from models.two_tower import TwoTowerModel
 import pandas as pd
 from models.data_util import preproccess_pipeline, UserItemMagnitudeDataset
-from models.user_tower import UserTower
-from models.item_tower import ItemTower
+from models.entity_tower import EntityTower
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 
+def create_and_train_two_tower(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame,  return_epoch_losses: bool=False, n_epochs: int = 10):
+    dataset = preproccess_pipeline(item_df, user_df, interaction_df)
+    item_tower = EntityTower(dataset.items_num_numerical, dataset.items_num_categorical)
+    user_tower = EntityTower(dataset.users_num_numerical, dataset.users_num_categorical)
+    two_tower_model = TwoTowerModel(item_tower, user_tower)
+    
+    epoch_losses = _train(dataset, two_tower_model, n_epochs=n_epochs)
+    if return_epoch_losses:
+        return item_tower, user_tower, epoch_losses
+    return item_tower, user_tower
 
-def train_two_tower(item_tower: ItemTower, user_tower: UserTower, item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame, interaction_df_neg: pd.DataFrame, return_epoch_losses: bool=False, n_epochs: int = 10):
+def train_two_tower(item_tower: EntityTower, user_tower: EntityTower, item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame,  return_epoch_losses: bool=False, n_epochs: int = 10):
 
-    dataset = preproccess_pipeline(item_df, user_df, interaction_df_pos, interaction_df_neg)
+    dataset = preproccess_pipeline(item_df, user_df, interaction_df_pos)
     two_tower_model = TwoTowerModel(item_tower, user_tower)
     
     epoch_losses = _train(dataset, two_tower_model, n_epochs=n_epochs)
@@ -39,8 +48,8 @@ def _train(dataset: UserItemMagnitudeDataset, two_tower_model: TwoTowerModel, n_
         
         for items, users, magnitude in dataloader:
             # Move data to specified device
-            items = {key: value.to(device) for key, value in items.items()}
-            users = {key: value.to(device) for key, value in users.items()}
+            items = {key: value.to(device) if type(value) == torch.Tensor else value for key, value in items.items()}
+            users = {key: value.to(device) if type(value) == torch.Tensor else value for key, value in users.items()}
             magnitude = magnitude.to(device)
             
             # Zero the gradients
