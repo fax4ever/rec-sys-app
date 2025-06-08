@@ -191,10 +191,10 @@ def data_preproccess(df: pd.DataFrame):
     
     return procceed_tensor_dict
 
-def preproccess_pipeline(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame):
+def preproccess_pipeline(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame):
     # Align the intercations with the users and items
-    item_df, user_df, inter_df_pos = _align_intercation(item_df, user_df, interaction_df_pos)
-    magnitude = torch.Tensor(_calculate_interaction_loss(inter_df_pos).values)
+    item_df, user_df, inter_df = _align_intercation(item_df, user_df, interaction_df)
+    magnitude = torch.Tensor(_calculate_interaction_loss(inter_df).values)
     
     item_dict = data_preproccess(item_df)
     user_dict = data_preproccess(user_df)
@@ -210,7 +210,7 @@ def _align_intercation(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction
     return merged_df.rename(columns={'rating_y': 'rating'})[item_df.columns], merged_df[user_df.columns], merged_df.rename(columns={'rating_x': 'rating'})[interaction_df.columns]
 
 
-def loss_map(factor, none_value):
+def _loss_map(factor, none_value):
     return {
         'interaction_type': {
             'positive_view': lambda x: x / factor,
@@ -226,7 +226,7 @@ def loss_map(factor, none_value):
 
 def _calculate_interaction_loss(inter_df: pd.DataFrame, factor: float=1.1, magnitude_default: float=11.265591558187197):
     none_value = object()
-    punishment = loss_map(factor, none_value)
+    punishment = _loss_map(factor, none_value)
     inter_df = inter_df.fillna(none_value)
     inter_df['magnitude'] = magnitude_default
     
