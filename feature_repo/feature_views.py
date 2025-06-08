@@ -121,7 +121,7 @@ item_embedding_view = FeatureView(
     entities=[item_entity],
     ttl=timedelta(days=365 * 5),
     schema=[
-        Field(name="item_id", dtype=Int64),
+        Field(name="item_id", dtype=String),
         Field(
             name="embedding",
             dtype=Array(Float32),
@@ -138,7 +138,7 @@ user_embedding_view = FeatureView(
     entities=[user_entity],
     ttl=timedelta(days=365 * 5),
     schema=[
-        Field(name="user_id", dtype=Int64),
+        Field(name="user_id", dtype=String),
         Field(
             name="embedding",
             dtype=Array(Float32),
@@ -155,8 +155,8 @@ user_items_view = FeatureView(
     entities=[user_entity],
     ttl=timedelta(days=365 * 5),
     schema=[
-        Field(name="user_id", dtype=Int64),
-        Field(name='top_k_item_ids', dtype=Array(Int64), vector_index=False)
+        Field(name="user_id", dtype=String),
+        Field(name='top_k_item_ids', dtype=Array(String), vector_index=False)
     ],
     source=user_items_push_source,
     online=True

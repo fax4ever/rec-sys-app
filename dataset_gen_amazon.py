@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import random
 import argparse
 import pathlib
+import secrets
+import string
 
 categories = ['Computers&Accessories|Accessories&Peripherals|Cables&Accessories|Cables|USBCables',
        'Electronics|WearableTechnology|SmartWatches',
@@ -59,10 +61,15 @@ unique_categories = list(set([item for sublist in [cat.split('|') for cat in cat
 # Set random seed for reproducibility
 np.random.seed(42)
 
+def generate_secure_user_id(length=26):
+    characters = string.ascii_uppercase + string.digits
+    user_id = ''.join(secrets.choice(characters) for _ in range(length))
+    return user_id
+
 # Generate user data
 def generate_users(num_users, from_id = 0):
     users = []
-    for user_id in range(1 + from_id, num_users + from_id + 1):
+    for user_id in [generate_secure_user_id() for i in range(num_users)]:
         signup_date = datetime(2023, 1, 1) + timedelta(days=np.random.randint(0, 365))
         
         # Generate user preferences (categories they tend to like)
@@ -165,8 +172,12 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
         # Additional data based on interaction type
         if interaction_type == 'rate':
             rating = float(np.random.randint(3, 6))  # 1-5 rating
+            review_title = 'Good' if rating >= 3 else 'Bad'
+            review_content = 'So good' if review_title == 'Good' else 'Dont buy it'
         else:
             rating = None
+            review_title = 'No review'
+            review_content = 'no content'
             
         if interaction_type == 'purchase':
             quantity = float(np.random.randint(1, 4))
@@ -179,6 +190,8 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
             'item_id': item_id,
             'timestamp': timestamp,
             'interaction_type': interaction_type,
+            'review_title': review_title,
+            'review_content': review_content,
             'rating': rating,
             'quantity': quantity
         })
