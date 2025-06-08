@@ -10,13 +10,11 @@ ENTITY_NAME_ITEM = item_id.split('_')[0]
 user_entity = Entity(
     name=ENTITY_NAME_USER,
     join_keys=[user_id],
-    value_type=ValueType.INT64,
-    description=user_id.replace('_', ''),
+    value_type=ValueType.STRING,
 )
 
 item_entity = Entity(
     name=ENTITY_NAME_ITEM,
     join_keys=[item_id],
-    value_type=ValueType.INT64,
-    description=item_id.replace('_', ''),
+    value_type=ValueType.STRING,
 )

@@ -30,8 +30,8 @@ class UserItemMagnitudeDataset(Dataset):
             
         self._items_num_numerical = items['numerical_features'].shape[1]
         self._users_num_numerical = users['numerical_features'].shape[1]
-        self._items_num_categorical = items['categorical_features'].shape[1]
-        self._users_num_categorical = users['categorical_features'].shape[1]
+        self._items_num_categorical = torch.unique(items['categorical_features']).numel()
+        self._users_num_categorical = torch.unique(users['categorical_features']).numel()
             
     def __len__(self):
         """Returns the total number of samples"""
@@ -194,7 +194,7 @@ def data_preproccess(df: pd.DataFrame):
 def preproccess_pipeline(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame):
     # Align the intercations with the users and items
     item_df, user_df, inter_df_pos = _align_intercation(item_df, user_df, interaction_df_pos)
-    magnitude = torch.Tensor(_calculate_interaction_loss_v2(inter_df_pos).values)
+    magnitude = torch.Tensor(_calculate_interaction_loss(inter_df_pos).values)
     
     item_dict = data_preproccess(item_df)
     user_dict = data_preproccess(user_df)
@@ -224,7 +224,7 @@ def loss_map(factor, none_value):
         'quantity': lambda x, q: x if (q is none_value or q <= 1.0) else x / (factor * (q - 1))
     }
 
-def _calculate_interaction_loss_v2(inter_df: pd.DataFrame, factor: float=1.1, magnitude_default: float=11.265591558187197):
+def _calculate_interaction_loss(inter_df: pd.DataFrame, factor: float=1.1, magnitude_default: float=11.265591558187197):
     none_value = object()
     punishment = loss_map(factor, none_value)
     inter_df = inter_df.fillna(none_value)

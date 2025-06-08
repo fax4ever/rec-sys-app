@@ -18,9 +18,8 @@ user_feature_view = FeatureView(
     entities=[user_entity],
     ttl=timedelta(days=365 * 6),
     schema=[
-        Field(name="user_id", dtype=Int64),
-        Field(name="age", dtype=Int32),
-        Field(name="gender", dtype=String),
+        Field(name="user_id", dtype=String),
+        Field(name="user_name", dtype=String),
         Field(name="preferences", dtype=String),
     ],
     source=users_source,
@@ -32,15 +31,17 @@ item_feature_view = FeatureView(
     entities=[item_entity],
     ttl=timedelta(days=365 * 5), 
     schema=[
-        Field(name="item_id", dtype=Int64),
+        Field(name="item_id", dtype=String),
+        Field(name="product_name", dtype=String),
         Field(name="category", dtype=String),
-        Field(name="subcategory", dtype=String),
-        Field(name="price", dtype=Float32),
-        Field(name="avg_rating", dtype=Float32),
-        Field(name="num_ratings", dtype=Int32),
-        Field(name="popular", dtype=Bool),
-        Field(name="new_arrival", dtype=Bool),
-        Field(name="on_sale", dtype=Bool),
+        Field(name="discounted_price", dtype=Float32),
+        Field(name="actual_price", dtype=Float32),
+        Field(name="discount_percentage", dtype=Float32),
+        Field(name="rating", dtype=Float32),
+        Field(name="rating_count", dtype=Float32),
+        Field(name="about_product", dtype=String),
+        Field(name="img_link", dtype=String),
+        Field(name="product_link", dtype=String),
     ],
     source=items_source,
     online=True
@@ -51,11 +52,14 @@ interaction_feature_view = FeatureView(
     entities=[user_entity, item_entity],
     ttl=timedelta(days=365 * 5),
     schema=[
-        Field(name="user_id", dtype=Int64),
-        Field(name="item_id", dtype=Int64),
-        Field(name="interaction_type", dtype=String),
+        Field(name="interaction_id", dtype=String),
+        Field(name="user_id", dtype=String),
+        Field(name="item_id", dtype=String),
         Field(name="rating", dtype=Int32),
-        Field(name="quantity", dtype=Int32),
+        Field(name="review_title", dtype=String),
+        Field(name="review_content", dtype=String),
+        Field(name="interaction_type", dtype=String),
+        Field(name="quantity", dtype=String),
     ],
     source=interactions_source,
     online=False
@@ -111,20 +115,6 @@ interaction_feature_view = FeatureView(
 #     online=True,
 #     # tags={},
 # )
-
-neg_interaction_feature_view = FeatureView(
-    name="neg_interactions_features",
-    entities=[user_entity, item_entity],
-    ttl=timedelta(days=365 * 5),
-    schema=[
-        Field(name="user_id", dtype=Int64),
-        Field(name="item_id", dtype=Int64),
-        Field(name="interaction_type", dtype=String),
-        Field(name="rating", dtype=Int32),
-    ],
-    source=interactions_source,
-    online=False
-)
 
 item_embedding_view = FeatureView(
     name="item_embedding",
