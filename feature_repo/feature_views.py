@@ -10,7 +10,7 @@ from feast.stream_feature_view import stream_feature_view
 
 from data_sources import interactions_source, items_source, users_source, item_embed_push_source, user_embed_push_source, user_items_push_source
 from entities import user_entity, item_entity
-from feast.types import Float32, Int32, Int64, String, Bool, Array
+from feast.types import Float32, Float64, Int32, Int64, String, Bool, Array
 
 
 user_feature_view = FeatureView(
@@ -34,11 +34,11 @@ item_feature_view = FeatureView(
         Field(name="item_id", dtype=String),
         Field(name="product_name", dtype=String),
         Field(name="category", dtype=String),
-        Field(name="discounted_price", dtype=Float32),
-        Field(name="actual_price", dtype=Float32),
-        Field(name="discount_percentage", dtype=Float32),
-        Field(name="rating", dtype=Float32),
-        Field(name="rating_count", dtype=Float32),
+        Field(name="discounted_price", dtype=Float64),
+        Field(name="actual_price", dtype=Float64),
+        Field(name="discount_percentage", dtype=Float64),
+        Field(name="rating", dtype=Float64),
+        Field(name="rating_count", dtype=Int64),
         Field(name="about_product", dtype=String),
         Field(name="img_link", dtype=String),
         Field(name="product_link", dtype=String),
@@ -55,11 +55,11 @@ interaction_feature_view = FeatureView(
         Field(name="interaction_id", dtype=String),
         Field(name="user_id", dtype=String),
         Field(name="item_id", dtype=String),
-        Field(name="rating", dtype=Int32),
+        Field(name="rating", dtype=Float64),
         Field(name="review_title", dtype=String),
         Field(name="review_content", dtype=String),
         Field(name="interaction_type", dtype=String),
-        Field(name="quantity", dtype=String),
+        Field(name="quantity", dtype=Float64),
     ],
     source=interactions_source,
     online=False

@@ -61,7 +61,7 @@ unique_categories = list(set([item for sublist in [cat.split('|') for cat in cat
 # Set random seed for reproducibility
 np.random.seed(42)
 
-def generate_secure_user_id(length=26):
+def generate_id(length=26):
     characters = string.ascii_uppercase + string.digits
     user_id = ''.join(secrets.choice(characters) for _ in range(length))
     return user_id
@@ -69,7 +69,7 @@ def generate_secure_user_id(length=26):
 # Generate user data
 def generate_users(num_users, from_id = 0):
     users = []
-    for user_id in [generate_secure_user_id() for i in range(num_users)]:
+    for user_id in [generate_id() for i in range(num_users)]:
         signup_date = datetime(2023, 1, 1) + timedelta(days=np.random.randint(0, 365))
         
         # Generate user preferences (categories they tend to like)
@@ -185,7 +185,7 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
             quantity = None
         
         interactions.append({
-            'interaction_id': len(interactions) + 1,
+            'interaction_id': generate_id(),
             'user_id': user_id,
             'item_id': item_id,
             'timestamp': timestamp,
