@@ -6,15 +6,26 @@ from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 
-def create_and_train_two_tower(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame,  return_epoch_losses: bool=False, n_epochs: int = 10):
+def create_and_train_two_tower(item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df: pd.DataFrame,  return_epoch_losses: bool=False, n_epochs: int = 10, return_model_definition: bool =False):
     dataset = preproccess_pipeline(item_df, user_df, interaction_df)
+    models_definition = {
+    "items_num_numerical": dataset.items_num_numerical,
+    "items_num_categorical": dataset.items_num_categorical,
+    "users_num_numerical": dataset.users_num_numerical,
+    "users_num_categorical": dataset.users_num_categorical
+    }
     item_tower = EntityTower(dataset.items_num_numerical, dataset.items_num_categorical)
     user_tower = EntityTower(dataset.users_num_numerical, dataset.users_num_categorical)
     two_tower_model = TwoTowerModel(item_tower, user_tower)
     
     epoch_losses = _train(dataset, two_tower_model, n_epochs=n_epochs)
+    if return_epoch_losses and return_model_definition:
+        return item_tower, user_tower, epoch_losses, models_definition
+    if return_model_definition:
+        return item_tower, user_tower, models_definition
     if return_epoch_losses:
         return item_tower, user_tower, epoch_losses
+    
     return item_tower, user_tower
 
 def train_two_tower(item_tower: EntityTower, user_tower: EntityTower, item_df: pd.DataFrame, user_df: pd.DataFrame, interaction_df_pos: pd.DataFrame,  return_epoch_losses: bool=False, n_epochs: int = 10):

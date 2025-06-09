@@ -153,9 +153,9 @@ def data_preproccess(df: pd.DataFrame):
     unique_percentages = df[[col for col in text_columns if col not in url_columns]].nunique()
     unique_percentages = (unique_percentages / unique_percentages.max())
     # Filter columns where unique values are less than 20% of total values
-    categorical_columns = unique_percentages[unique_percentages < 0.2].index.tolist()
+    categorical_columns = unique_percentages[unique_percentages < 0.8].index.tolist()
     category_df = df[categorical_columns]
-    
+    print(f'unqiue precentege: {unique_percentages}')
     # Text features
     text_columns = [col for col in text_columns if col not in categorical_columns + url_columns]
     text_df = df[text_columns]
