@@ -18,4 +18,8 @@ COPY entry_point.sh entry_point.sh
 # give premisssions 
 RUN chmod -R 777 . && ls -la
 
+ENV HF_HOME=/hf_cache
+RUN mkdir -p /hf_cache && \
+    chmod -R 777 /hf_cache
+
 ENTRYPOINT ["/bin/sh", "-c", "/app/entry_point.sh"]
