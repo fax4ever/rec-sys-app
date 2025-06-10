@@ -38,6 +38,11 @@ users_items_dummy_source = FileSource(
     path=os.path.join(data_path, 'user_items.parquet'),
     timestamp_field="event_timestamp",
 )
+item_textual_features_embed_dummy_source = FileSource(
+    file_format=ParquetFormat(),
+    path=os.path.join(data_path, 'item_textual_features_embed.parquet'),
+    timestamp_field="event_timestamp",
+)
 
 item_embed_push_source = PushSource(
     name='item_embed_push_source',
@@ -52,6 +57,11 @@ user_embed_push_source = PushSource(
 user_items_push_source = PushSource(
     name='user_items_push_source',
     batch_source=users_items_dummy_source    
+)
+
+item_textual_features_embed_push_source = PushSource(
+    name='item_textual_features_embed',
+    batch_source=item_textual_features_embed_dummy_source
 )
 
 # interaction_stream_source = KafkaSource(
