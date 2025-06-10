@@ -174,3 +174,16 @@ cython_debug/
 .pypirc
 
 *.crt
+
+# Generated data
+/feature_repo/data/interaction_df_output.parquet
+/feature_repo/data/item_df_output.parquet
+/feature_repo/data/user_df_output.parquet
+
+# Networks parameters
+/params/item_encoder.dat
+/params/models_definition.dat
+/params/user_encoder.dat
+
+# The local registry
+/feature_repo/data/registry.db
