@@ -18,4 +18,3 @@ online_store:
   # this place holder replace by the entry_point.sh
   password: placeholder
   vector_enabled: true
-  vector_len: 64
