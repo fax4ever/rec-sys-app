@@ -167,7 +167,7 @@ def generate_interactions(users_df: pd.DataFrame, items_df: pd.DataFrame, num_in
                                                       minutes=np.random.randint(0, 60))
         
         # Different types of interactions
-        interaction_type = np.random.choice(['positive_view', 'negetive_view', 'cart', 'purchase', 'rate'], p=[0.1, 0.6, 0.1, 0.15, 0.05])
+        interaction_type = np.random.choice(['positive_view', 'negative_view', 'cart', 'purchase', 'rate'], p=[0.1, 0.6, 0.1, 0.15, 0.05])
         
         # Additional data based on interaction type
         if interaction_type == 'rate':
