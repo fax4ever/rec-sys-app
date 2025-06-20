@@ -37,7 +37,15 @@ def simple_texts():
 def simple_images():
     image_links = ["http://images.cocodataset.org/val2017/000000039769.jpg",
             "https://farm1.staticflickr.com/111/299422173_a073c92714_z.jpg"]
-    return [Image.open(requests.get(url, stream=True).raw) for url in image_links]
+    images = [Image.open(requests.get(url, stream=True).raw) for url in image_links]
+
+    generated_image_path = Path(__file__).parent.parent.joinpath("generation").joinpath("data").joinpath("generated_images")
+    gen_1 = generated_image_path.joinpath("item_CarVac Pro.png")
+    gen_2 = generated_image_path.joinpath("item_FilterPro Set.png")
+
+    images.append(Image.open(gen_1))
+    images.append(Image.open(gen_2))
+    return images
 
 
 @pytest.fixture
@@ -47,7 +55,7 @@ def more_texts(simple_texts):
 
 @pytest.fixture
 def more_images(simple_images):
-    return simple_images * 10
+    return simple_images * 5
 
 
 @pytest.fixture
