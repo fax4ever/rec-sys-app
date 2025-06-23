@@ -1,6 +1,9 @@
 import torch
 from transformers import CLIPModel, CLIPTokenizer, CLIPImageProcessor
 from PIL import Image
+from datetime import datetime
+import requests
+
 
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 CLIP_MODEL_SIZE = 512
@@ -12,6 +15,18 @@ class ClipEncoder:
         self.tokenizer = CLIPTokenizer.from_pretrained(CLIP_MODEL_NAME)
         self.model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
         self.model.eval()
+
+    def clip_embeddings(self, item_df):
+        result = item_df[['item_id']].copy()
+        result['clip_latent_space_embedding'] = self.create_clip_embeddings(item_df)
+        result['event_timestamp'] = datetime.now()
+        return result
+
+    def create_clip_embeddings(self, item_df):
+        texts = item_df['about_product'].tolist()
+        image_links = item_df['product_link'].tolist()
+        images = [Image.open(requests.get(url, stream=True).raw) if url is not None else None for url in image_links]
+        return self.encode_texts_and_images(texts, images)
 
     def encode_texts_and_images(self, texts: list[str], images: list[Image], batch_size: int = 32):
         assert len(texts) == len(images)

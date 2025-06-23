@@ -94,3 +94,10 @@ def test_image_encoding(clip_encoder, more_images, images_having_nones):
 def test_image_and_text_encoding(clip_encoder, more_texts, images_having_nones):
     clip_embeddings = clip_encoder.encode_texts_and_images(more_texts, images_having_nones, 4)
     assert clip_embeddings is not None
+
+
+def test_item_df_embedding_generation(clip_encoder, item_df):
+    item_clip_features_embed = clip_encoder.clip_embeddings(item_df)
+    # produced the object to be used by the workflow:
+    # store.push('item_clip_features_embed', item_clip_features_embed, to=PushMode.ONLINE, allow_registry_cache=False)
+    assert item_clip_features_embed is not None
