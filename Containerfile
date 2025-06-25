@@ -15,6 +15,7 @@ RUN dnf update -y && \
 COPY models/ models/
 COPY feature_repo/ feature_repo/
 COPY entry_point.sh entry_point.sh
+COPY service/ service/
 # give premisssions 
 RUN chmod -R 777 . && ls -la
 
