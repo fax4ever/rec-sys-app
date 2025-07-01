@@ -1,8 +1,6 @@
 from datetime import datetime
-from pprint import pprint
 
 import json
-import pandas as pd
 import torch
 from feast import FeatureStore
 from feast.data_source import PushMode
@@ -13,6 +11,7 @@ from models.data_util import data_preproccess
 from service.search_by_text import SearchService
 from service.search_by_image import SearchByImageService
 from service.clip_encoder import ClipEncoder
+from service.dataset_provider import LocalDatasetProvider
 
 """
 Code copied and adapted from https://github.com/RHEcosystemAppEng/rec-sys-workflow/blob/main/train-workflow.py
@@ -24,43 +23,12 @@ def main():
     store.refresh_registry()
     print('registry refreshed')
 
-    # load feature services
-    item_service = store.get_feature_service("item_service")
-    user_service = store.get_feature_service("user_service")
-    interaction_service = store.get_feature_service("interaction_service")
-    print('service loaded')
-
-    users_ids = pd.read_parquet('./feature_repo/data/recommendation_interactions.parquet')
-    pprint(users_ids)
-    user_ids = users_ids['user_id'].unique().tolist()
-    item_ids = users_ids['item_id'].unique().tolist()
-
-    # select which items to use for the training
-    item_entity_df = pd.DataFrame.from_dict(
-        {
-            'item_id': item_ids,
-            'event_timestamp': [datetime(2025, 1, 1)] * len(item_ids)
-        }
-    )
-    # select which users to use for the training
-    user_entity_df = pd.DataFrame.from_dict(
-        {
-            'user_id': user_ids,
-            'event_timestamp': [datetime(2025, 1, 1)] * len(user_ids)
-        }
-    )
-    # Select which item-user interactions to use for the training
-    item_user_interactions_df = pd.read_parquet('./feature_repo/data/interactions_item_user_ids.parquet')
-    item_user_interactions_df['event_timestamp'] = datetime(2025, 1, 1)
+    dataset_provider = LocalDatasetProvider(store)
 
     # retrieve datasets for training
-    item_df = store.get_historical_features(entity_df=item_entity_df, features=item_service).to_df()
-    user_df = store.get_historical_features(entity_df=user_entity_df, features=user_service).to_df()
-    interaction_df = store.get_historical_features(entity_df=item_user_interactions_df, features=interaction_service).to_df()
-
-    item_df.to_parquet("./feature_repo/data/item_df_output.parquet")
-    user_df.to_parquet("./feature_repo/data/user_df_output.parquet")
-    interaction_df.to_parquet("./feature_repo/data/interaction_df_output.parquet")
+    item_df = dataset_provider.item_df()
+    user_df = dataset_provider.user_df()
+    interaction_df = dataset_provider.interaction_df()
 
     item_encoder, user_encoder, models_definition = create_and_train_two_tower(item_df, user_df, interaction_df,
                                                                                return_model_definition=True)
@@ -135,6 +103,7 @@ def main():
     search_by_image_service = SearchByImageService(store, clip_encoder)
     items = search_by_image_service.search_by_image_link("http://images.cocodataset.org/val2017/000000039769.jpg", 10)
     print(items)
+
 
 if __name__ == '__main__':
     main()
